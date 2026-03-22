@@ -1,0 +1,1976 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>AN\ Banking</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f1f5f9;
+      min-height: 100vh;
+      max-width: 448px;
+      margin: 0 auto;
+      overflow-x: hidden;
+    }
+
+    .overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 10, 30, 0.55);
+      z-index: 100;
+      backdrop-filter: blur(2px);
+      animation: fadeIn 0.2s ease;
+    }
+    .overlay.active { display: flex; align-items: flex-end; justify-content: center; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    .sheet {
+      background: white;
+      border-radius: 24px 24px 0 0;
+      width: 100%;
+      max-width: 448px;
+      padding: 0 0 40px;
+      animation: slideUp 0.3s cubic-bezier(0.34,1.56,0.64,1);
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+    .sheet-handle {
+      width: 40px; height: 4px;
+      background: #e2e8f0;
+      border-radius: 4px;
+      margin: 12px auto 0;
+    }
+
+    .sheet-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 20px 0;
+    }
+    .sheet-title { font-size: 20px; font-weight: 700; color: #1e293b; }
+    .close-btn {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      background: #f1f5f9;
+      border: none;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; color: #64748b;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 100px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: #1e293b;
+      color: white;
+      padding: 12px 24px;
+      border-radius: 100px;
+      font-size: 14px;
+      font-weight: 500;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.3s ease;
+      z-index: 999;
+      white-space: nowrap;
+      max-width: 90vw;
+      text-align: center;
+    }
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px;
+      background: white;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    .header-left { display: flex; align-items: center; gap: 12px; }
+    .menu-btn {
+      background: none; border: none; cursor: pointer; padding: 6px;
+      border-radius: 8px;
+      transition: background 0.2s;
+    }
+    .menu-btn:active { background: #f1f5f9; }
+    .menu-icon { width: 24px; height: 18px; display: flex; flex-direction: column; justify-content: space-between; }
+    .menu-icon span { display: block; height: 2px; background: #334155; border-radius: 2px; transition: all 0.3s; }
+    .menu-btn.open .menu-icon span:nth-child(1) { transform: rotate(45deg) translateY(8px); }
+    .menu-btn.open .menu-icon span:nth-child(2) { opacity: 0; transform: scaleX(0); }
+    .menu-btn.open .menu-icon span:nth-child(3) { transform: rotate(-45deg) translateY(-8px); }
+
+    .logo { font-size: 22px; font-weight: 800; color: #7c3aed; letter-spacing: -0.5px; }
+    .header-right { display: flex; align-items: center; gap: 10px; }
+    .notification-btn {
+      position: relative; background: none; border: none; cursor: pointer; padding: 6px;
+      border-radius: 8px; transition: background 0.2s;
+    }
+    .notification-btn:active { background: #f1f5f9; }
+    .notification-dot {
+      position: absolute; top: 4px; right: 4px;
+      width: 9px; height: 9px;
+      background: #ef4444; border-radius: 50%; border: 2px solid white;
+    }
+    .notification-dot.hidden { display: none; }
+    .avatar-btn {
+      width: 40px; height: 40px; border-radius: 50%;
+      background: #1e293b; border: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: transform 0.2s;
+    }
+    .avatar-btn:active { transform: scale(0.93); }
+
+    .main {
+      padding: 16px;
+      padding-bottom: 120px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .balance-card {
+      position: relative;
+      border-radius: 24px;
+      padding: 20px;
+      overflow: hidden;
+      background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 55%, #6d28d9 100%);
+    }
+    .deco1 {
+      position: absolute; bottom: -64px; left: -64px;
+      width: 192px; height: 192px; border-radius: 50%;
+      background: rgba(167,139,250,0.2); pointer-events: none;
+    }
+    .deco2 {
+      position: absolute; top: -32px; right: -32px;
+      width: 128px; height: 128px; border-radius: 50%;
+      background: rgba(192,132,252,0.1); pointer-events: none;
+    }
+    .online-row { display: flex; justify-content: flex-end; margin-bottom: 8px; }
+    .online-badge { display: flex; align-items: center; gap: 6px; }
+    .online-dot { width: 8px; height: 8px; background: #34d399; border-radius: 50%; animation: pulse 2s infinite; }
+    @keyframes pulse {
+      0%,100% { box-shadow: 0 0 0 0 rgba(52,211,153,0.4); }
+      50% { box-shadow: 0 0 0 6px rgba(52,211,153,0); }
+    }
+    .online-text { color: #34d399; font-size: 14px; font-weight: 500; }
+
+    .user-greeting { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; position: relative; z-index: 1; }
+    .user-avatar {
+      width: 56px; height: 56px; border-radius: 50%;
+      background: #1e293b; border: 4px solid #334155;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .greeting-text { color: white; font-size: 20px; font-weight: 600; }
+
+    .balance-section { margin-bottom: 16px; position: relative; z-index: 1; }
+    .balance-header { display: flex; align-items: flex-start; justify-content: space-between; }
+    .balance-label { color: rgba(255,255,255,0.8); font-size: 14px; margin-bottom: 4px; }
+    .balance-amount { display: flex; align-items: baseline; gap: 8px; }
+    .amount { color: white; font-size: 36px; font-weight: 700; transition: filter 0.3s; }
+    .amount.blurred { filter: blur(8px); user-select: none; }
+    .currency { color: rgba(255,255,255,0.8); font-size: 20px; }
+    .eye-btn { background: none; border: none; cursor: pointer; padding: 8px; }
+
+    .action-buttons { display: flex; gap: 12px; margin-bottom: 12px; position: relative; z-index: 1; }
+    .transactions-btn {
+      display: flex; align-items: center; gap: 8px;
+      background: white; border: none; border-radius: 12px;
+      padding: 12px 20px; font-weight: 500; color: #7c3aed;
+      cursor: pointer; font-size: 14px;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .transactions-btn:active { transform: scale(0.96); box-shadow: 0 0 0 3px rgba(124,58,237,0.2); }
+    .withdraw-btn {
+      flex: 1;
+      background: rgba(255,255,255,0.2);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255,255,255,0.3);
+      border-radius: 12px;
+      padding: 12px 20px;
+      font-weight: 500; color: white;
+      cursor: pointer; font-size: 14px;
+      transition: background 0.2s, transform 0.15s;
+    }
+    .withdraw-btn:active { background: rgba(255,255,255,0.3); transform: scale(0.97); }
+    .active-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(255,255,255,0.2); backdrop-filter: blur(8px);
+      border-radius: 20px; padding: 6px 12px;
+      position: relative; z-index: 1;
+    }
+    .active-dot { width: 8px; height: 8px; background: #34d399; border-radius: 50%; }
+    .active-text { color: #34d399; font-size: 14px; font-weight: 500; }
+
+    .actions-section { background: white; border-radius: 24px; padding: 20px; }
+    .actions-title { color: #1e293b; font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+    .actions-subtitle { color: #64748b; font-size: 14px; margin-bottom: 20px; }
+    .actions-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .action-card {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; gap: 12px; padding: 24px;
+      border-radius: 16px; border: none; cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .action-card:active { transform: scale(0.95); }
+    .account-info-card { background: #f8fafc; border: 1px solid #e2e8f0; }
+    .account-icon {
+      width: 48px; height: 48px; border-radius: 50%;
+      background: #f1f5f9; border: 1px solid #e2e8f0;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .action-card-text { font-weight: 600; font-size: 14px; }
+    .account-info-card .action-card-text { color: #1e293b; }
+    .activate-card { background: linear-gradient(135deg, #a78bfa 0%, #8b5cf6 100%); }
+    .activate-card .action-card-text { color: #4c1d95; }
+    .activate-card:active { box-shadow: 0 0 0 4px rgba(139,92,246,0.3); }
+
+    .bottom-nav {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      max-width: 448px; margin: 0 auto;
+      background: white; border-top: 1px solid #e2e8f0;
+      padding: 12px 24px;
+    }
+    .nav-items { display: flex; justify-content: space-between; }
+    .nav-item {
+      display: flex; flex-direction: column; align-items: center; gap: 4px;
+      background: none; border: none; cursor: pointer; color: #94a3b8;
+      padding: 6px 12px; border-radius: 12px;
+      transition: color 0.2s, background 0.2s;
+    }
+    .nav-item.active { color: #7c3aed; }
+    .nav-item:not(.active):active { background: #f8fafc; }
+    .nav-text { font-size: 12px; font-weight: 500; }
+    .home-indicator { display: flex; justify-content: center; margin-top: 10px; }
+    .indicator-bar { width: 128px; height: 4px; background: #e2e8f0; border-radius: 4px; }
+
+    svg { width: 24px; height: 24px; }
+    .small-icon { width: 16px; height: 16px; }
+    .large-icon { width: 32px; height: 32px; }
+
+    .page-view {
+      display: none;
+      padding: 16px;
+      padding-bottom: 120px;
+      flex-direction: column;
+      gap: 16px;
+      animation: fadeSlide 0.3s ease;
+    }
+    .page-view.active { display: flex; }
+    @keyframes fadeSlide {
+      from { opacity: 0; transform: translateX(16px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+    .page-card { background: white; border-radius: 20px; padding: 20px; }
+    .page-card-title { font-size: 18px; font-weight: 700; color: #1e293b; margin-bottom: 4px; }
+    .page-card-sub { font-size: 14px; color: #64748b; margin-bottom: 16px; }
+
+    .row { display: flex; align-items: center; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid #f1f5f9; }
+    .row:last-child { border-bottom: none; }
+    .row-label { font-size: 14px; color: #64748b; }
+    .row-value { font-size: 14px; font-weight: 600; color: #1e293b; }
+
+    .tx-item {
+      display: flex; align-items: center; gap: 14px;
+      padding: 14px 0; border-bottom: 1px solid #f8fafc;
+    }
+    .tx-item:last-child { border-bottom: none; }
+    .tx-icon {
+      width: 44px; height: 44px; border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .tx-icon.income  { background: #dcfce7; }
+    .tx-icon.expense { background: #fef2f2; }
+    .tx-icon.pending { background: #fffbeb; }
+    .tx-info { flex: 1; }
+    .tx-name { font-size: 15px; font-weight: 600; color: #1e293b; }
+    .tx-date { font-size: 12px; color: #94a3b8; margin-top: 2px; }
+    .tx-amount { font-size: 15px; font-weight: 700; }
+    .tx-amount.income  { color: #16a34a; }
+    .tx-amount.withdraw { color: #dc2626; }
+    .tx-amount.pending { color: #d97706; }
+
+    .form-group { margin-bottom: 16px; }
+    .form-label { font-size: 13px; font-weight: 600; color: #64748b; margin-bottom: 6px; display: block; }
+    .form-input {
+      width: 100%; padding: 14px 16px; border-radius: 12px;
+      border: 1.5px solid #e2e8f0; font-size: 15px;
+      background: #f8fafc; outline: none;
+      transition: border-color 0.2s;
+    }
+    .form-input:focus { border-color: #7c3aed; background: white; }
+    .form-input::placeholder { color: #cbd5e1; }
+    .btn-primary {
+      width: 100%; padding: 16px; background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+      border: none; border-radius: 14px; color: white; font-size: 15px;
+      font-weight: 600; cursor: pointer; transition: transform 0.15s, box-shadow 0.2s;
+    }
+    .btn-primary:active { transform: scale(0.98); box-shadow: 0 0 0 4px rgba(124,58,237,0.25); }
+
+    .card-visual {
+      border-radius: 20px;
+      padding: 24px;
+      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+      color: white;
+      position: relative;
+      overflow: hidden;
+      margin-bottom: 8px;
+    }
+    .card-visual::before {
+      content: '';
+      position: absolute;
+      width: 180px; height: 180px;
+      border-radius: 50%;
+      background: rgba(124,58,237,0.25);
+      bottom: -60px; right: -40px;
+    }
+    .card-chip { width: 38px; height: 28px; background: #f59e0b; border-radius: 6px; margin-bottom: 20px; }
+    .card-number { font-size: 17px; font-weight: 600; letter-spacing: 2px; margin-bottom: 16px; }
+    .card-row { display: flex; justify-content: space-between; align-items: flex-end; }
+    .card-holder-label { font-size: 11px; color: rgba(255,255,255,0.5); margin-bottom: 2px; }
+    .card-holder-name { font-size: 14px; font-weight: 600; }
+    .card-exp-label { font-size: 11px; color: rgba(255,255,255,0.5); margin-bottom: 2px; }
+    .card-exp-val { font-size: 14px; font-weight: 600; }
+    .card-brand { font-size: 22px; font-weight: 800; letter-spacing: -1px; color: #a78bfa; }
+
+    .profile-avatar-wrap { display: flex; flex-direction: column; align-items: center; padding: 24px 0 16px; }
+    .profile-avatar {
+      width: 80px; height: 80px; border-radius: 50%;
+      background: linear-gradient(135deg,#8b5cf6,#7c3aed);
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 12px; border: 4px solid #ede9fe;
+    }
+    .profile-name { font-size: 22px; font-weight: 700; color: #1e293b; }
+    .profile-email { font-size: 14px; color: #64748b; margin-top: 2px; }
+    .badge-green {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: #dcfce7; color: #16a34a; font-size: 12px;
+      font-weight: 600; padding: 4px 10px; border-radius: 100px;
+      margin-top: 8px;
+    }
+
+    .menu-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(15,10,30,0.45);
+      z-index: 200;
+      animation: fadeIn 0.2s ease;
+    }
+    .menu-overlay.active { display: block; }
+    .menu-drawer {
+      position: fixed; top: 0; left: 0; bottom: 0;
+      width: 280px;
+      background: white; z-index: 201;
+      padding: 0;
+      animation: slideRight 0.3s cubic-bezier(0.34,1.2,0.64,1);
+      display: flex; flex-direction: column;
+    }
+    @keyframes slideRight {
+      from { transform: translateX(-100%); }
+      to   { transform: translateX(0); }
+    }
+    .drawer-top {
+      background: linear-gradient(135deg,#8b5cf6,#7c3aed);
+      padding: 50px 24px 28px;
+    }
+    .drawer-avatar {
+      width: 60px; height: 60px; border-radius: 50%;
+      background: rgba(255,255,255,0.2); border: 3px solid rgba(255,255,255,0.3);
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 12px;
+    }
+    .drawer-name { font-size: 18px; font-weight: 700; color: white; }
+    .drawer-email { font-size: 13px; color: rgba(255,255,255,0.7); margin-top: 2px; }
+    .drawer-links { flex: 1; padding: 16px 0; }
+    .drawer-link {
+      display: flex; align-items: center; gap: 14px;
+      padding: 14px 24px; cursor: pointer;
+      font-size: 15px; font-weight: 500; color: #334155;
+      transition: background 0.15s, color 0.15s;
+      background: none; border: none; width: 100%; text-align: left;
+    }
+    .drawer-link:hover, .drawer-link:active { background: #f8fafc; color: #7c3aed; }
+    .drawer-link-icon { width: 38px; height: 38px; border-radius: 10px; background: #f1f5f9; display: flex; align-items: center; justify-content: center; }
+    .drawer-footer { padding: 16px 24px; border-top: 1px solid #f1f5f9; }
+    .logout-btn {
+      display: flex; align-items: center; gap: 12px;
+      width: 100%; padding: 12px 16px; border-radius: 12px;
+      background: #fef2f2; border: none; cursor: pointer;
+      color: #ef4444; font-size: 15px; font-weight: 600;
+      transition: background 0.2s;
+    }
+    .logout-btn:active { background: #fee2e2; }
+
+    .notif-item {
+      display: flex; gap: 14px; align-items: flex-start;
+      padding: 16px 20px; border-bottom: 1px solid #f8fafc;
+    }
+    .notif-item:last-child { border-bottom: none; }
+    .notif-icon {
+      width: 40px; height: 40px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .notif-icon.info  { background: #ede9fe; }
+    .notif-icon.warn  { background: #fffbeb; }
+    .notif-icon.success { background: #dcfce7; }
+    .notif-title { font-size: 14px; font-weight: 600; color: #1e293b; }
+    .notif-body  { font-size: 13px; color: #64748b; margin-top: 2px; line-height: 1.4; }
+    .notif-time  { font-size: 11px; color: #cbd5e1; margin-top: 4px; }
+
+    .bank-list { display: flex; flex-direction: column; gap: 12px; }
+    .bank-btn {
+      display: flex; align-items: center; gap: 14px;
+      padding: 16px; background: #f8fafc;
+      border: 1.5px solid #e2e8f0; border-radius: 14px;
+      cursor: pointer; transition: border-color 0.2s, background 0.2s;
+      font-size: 15px; font-weight: 600; color: #1e293b;
+    }
+    .bank-btn:active { border-color: #8b5cf6; background: #faf5ff; }
+    .bank-icon {
+      width: 40px; height: 40px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+    }
+    .step-indicator {
+      display: flex; gap: 6px; margin-bottom: 20px;
+    }
+    .step-dot {
+      height: 4px; flex: 1; border-radius: 4px; background: #e2e8f0;
+    }
+    .step-dot.done { background: #7c3aed; }
+
+    .activate-inner { padding: 24px 20px; }
+    .activate-icon {
+      width: 70px; height: 70px; border-radius: 50%;
+      background: linear-gradient(135deg,#a78bfa,#7c3aed);
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 16px;
+    }
+    .activate-title { font-size: 22px; font-weight: 700; color: #1e293b; text-align: center; margin-bottom: 8px; }
+    .activate-sub { font-size: 14px; color: #64748b; text-align: center; line-height: 1.6; margin-bottom: 24px; }
+    .activate-progress {
+      width: 100%; height: 8px; background: #f1f5f9; border-radius: 8px;
+      overflow: hidden; margin-bottom: 20px;
+    }
+    .activate-bar {
+      height: 100%; width: 0%;
+      background: linear-gradient(90deg,#8b5cf6,#7c3aed);
+      border-radius: 8px;
+      transition: width 0.5s ease;
+    }
+    .feature-list { display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px; }
+    .feature-row { display: flex; align-items: center; gap: 12px; }
+    .feature-check {
+      width: 24px; height: 24px; border-radius: 50%;
+      background: #ede9fe; display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; font-size: 12px; color: #7c3aed;
+    }
+    .feature-text { font-size: 14px; color: #334155; font-weight: 500; }
+
+    /* Language Switcher Styles */
+    .lang-switcher {
+      position: fixed;
+      bottom: 335px;
+      right: 18px;
+      z-index: 250;
+    }
+    .lang-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 15px rgba(124, 58, 237, 0.3);
+      transition: transform 0.2s, box-shadow 0.2s;
+      color: white;
+      font-size: 18px;
+    }
+    .lang-btn:active {
+      transform: scale(0.95);
+    }
+    .lang-dropdown {
+      display: none;
+      position: absolute;
+      bottom: 56px;
+      right: 0;
+      background: white;
+      border-radius: 14px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+      min-width: 160px;
+      overflow: hidden;
+      animation: fadeSlideUp 0.2s ease;
+    }
+    .lang-dropdown.active {
+      display: block;
+    }
+    @keyframes fadeSlideUp {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .lang-option {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 16px;
+      font-size: 14px;
+      font-weight: 500;
+      color: #334155;
+      cursor: pointer;
+      transition: background 0.15s;
+      border: none;
+      background: none;
+      width: 100%;
+      text-align: left;
+    }
+    .lang-option:hover, .lang-option:active {
+      background: #f8fafc;
+    }
+    .lang-option.selected {
+      background: #ede9fe;
+      color: #7c3aed;
+    }
+    .lang-flag {
+      font-size: 18px;
+    }
+
+    .filter-chip {
+      padding:6px 16px; border-radius:100px; border:1.5px solid #e2e8f0;
+      background:white; font-size:13px; font-weight:600; color:#64748b; cursor:pointer;
+      white-space:nowrap; transition: all 0.2s;
+    }
+    .filter-chip.active-chip { background:#7c3aed; color:white; border-color:#7c3aed; }
+
+    .settings-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 0;
+      border-bottom: 1px solid #f1f5f9;
+      cursor: pointer;
+    }
+    .settings-row:last-child { border-bottom: none; }
+    .settings-row-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .settings-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .settings-label {
+      font-size: 15px;
+      font-weight: 600;
+      color: #1e293b;
+    }
+    /* Gmail Banner */
+
+.gmail-banner{
+position:fixed;
+top:0;
+left:0;
+right:0;
+background:linear-gradient(90deg,#6d28d9,#7c3aed);
+color:#fff;
+font-weight:400;
+padding:2px;
+text-align:center;
+font-size:8px;
+z-index:9999;
+cursor:pointer;
+animation:bannerSlide 0.5s ease;
+}
+
+@keyframes bannerSlide{
+from{transform:translateY(-100%)}
+to{transform:translateY(0)}
+}
+
+
+/* Notification container */
+
+.live-notifications{
+position:fixed;
+top:70px;
+left:12px;
+display:flex;
+flex-direction:column;
+gap:10px;
+z-index:999;
+max-width:280px;
+}
+
+
+/* Notification box */
+
+.live-box{
+background:#ffffff;
+border-radius:8px;
+padding:6px 6px;
+box-shadow:0 8px 10px rgba(0,0,0,0.2);
+font-size:6px;
+font-weight:200;
+color:#1e293b;
+animation:slideFade 0.5s ease;
+}
+
+@keyframes slideFade{
+from{
+transform:translateX(-120%);
+opacity:0;
+}
+to{
+transform:translateX(0);
+opacity:1;
+}
+}
+
+  </style>
+</head>
+<body>
+<div class="gmail-banner" onclick="contactGmail()gmail.com">
+Contact us on Gmail: vercelsurveyteam@gmail.com
+</div>
+
+<div class="live-notifications" id="liveNotifications"></div>
+</div>
+<!-- Language Switcher -->
+<div class="lang-switcher">
+  <div class="lang-dropdown" id="langDropdown">
+    <button class="lang-option" data-lang="en" onclick="setLanguage('en')">
+      <span class="lang-flag">US</span> English
+    </button>
+    <button class="lang-option" data-lang="es" onclick="setLanguage('es')">
+      <span class="lang-flag">ES</span> Espanol
+    </button>
+    <button class="lang-option" data-lang="fr" onclick="setLanguage('fr')">
+      <span class="lang-flag">FR</span> Francais
+    </button>
+    <button class="lang-option" data-lang="de" onclick="setLanguage('de')">
+      <span class="lang-flag">DE</span> Deutsch
+    </button>
+    <button class="lang-option" data-lang="zh" onclick="setLanguage('zh')">
+      <span class="lang-flag">CN</span> Chinese
+    </button>
+    <button class="lang-option" data-lang="ar" onclick="setLanguage('ar')">
+      <span class="lang-flag">AR</span> Arabic
+    </button>
+  </div>
+  <button class="lang-btn" onclick="toggleLangDropdown()" title="Change Language">
+    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:22px;height:22px;">
+      <circle cx="12" cy="12" r="10"></circle>
+      <line x1="2" y1="12" x2="22" y2="12"></line>
+      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+    </svg>
+  </button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="menu-overlay" id="menuOverlay" onclick="closeMenu()">
+  <div class="menu-drawer" onclick="event.stopPropagation()">
+    <div class="drawer-top">
+      <div class="drawer-avatar">
+        <svg fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24" style="width:28px;height:28px;">
+          <path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4M9 9v.01M9 12v.01M9 15v.01M9 18v.01"></path>
+        </svg>
+      </div>
+      <div class="drawer-name" data-i18n="greetingText">Hi, User</div>
+    </div>
+    <div class="drawer-links">
+      <button class="drawer-link" onclick="navTo('home'); closeMenu();">
+        <div class="drawer-link-icon">
+          <svg fill="none" stroke="#7c3aed" stroke-width="2" viewBox="0 0 24 24" style="width:18px;height:18px;">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+            <polyline points="9 22 9 12 15 12 15 22"></polyline>
+          </svg>
+        </div>
+        <span data-i18n="dashboard">Dashboard</span>
+      </button>
+      <button class="drawer-link" onclick="openSettings(); closeMenu();">
+        <div class="drawer-link-icon">
+          <svg fill="none" stroke="#7c3aed" stroke-width="2" viewBox="0 0 24 24" style="width:18px;height:18px;">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+        </div>
+        <span data-i18n="settings">Settings</span>
+      </button>
+    </div>
+    <div class="drawer-footer">
+      <button class="logout-btn" onclick="handleLogout()">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:20px;height:20px;">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+          <polyline points="16 17 21 12 16 7"></polyline>
+          <line x1="21" y1="12" x2="9" y2="12"></line>
+        </svg>
+        <span data-i18n="signOut">Sign Out</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="notifOverlay">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <span class="sheet-title" data-i18n="notifications">Notifications</span>
+      <button class="close-btn" onclick="closeOverlay('notifOverlay')">&#x2715;</button>
+    </div>
+    <div id="notifList" style="margin-top:12px;">
+      <div class="notif-item">
+        <div class="notif-icon info">
+          <svg fill="none" stroke="#7c3aed" stroke-width="2" viewBox="0 0 24 24" style="width:18px;height:18px;">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+        </div>
+        <div>
+          <div class="notif-title" data-i18n="notifTitle">Account information</div>
+          <div class="notif-body" data-i18n="notifBody">Dear user kindly activate your account now using your bank card for instant withdrawal.</div>
+          <div class="notif-time" data-i18n="justNow">Just now</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="txOverlay">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <span class="sheet-title" data-i18n="transactionsTitle">Transactions</span>
+      <button class="close-btn" onclick="closeOverlay('txOverlay')">&#x2715;</button>
+    </div>
+    <div style="padding: 12px 20px 0;">
+      <div style="display:flex;gap:8px;margin-bottom:16px;overflow-x:auto;padding-bottom:4px;">
+        <button class="filter-chip active-chip" data-i18n="all" onclick="filterTx(this,'all')">All</button>
+        <button class="filter-chip" data-i18n="income" onclick="filterTx(this,'income')">Income</button>
+        <button class="filter-chip" data-i18n="expense" onclick="filterTx(this,'expense')">Expense</button>
+        <button class="filter-chip" data-i18n="pending" onclick="filterTx(this,'pending')">Pending</button>
+      </div>
+      <div id="txList">
+        <div class="tx-item" data-type="income">
+          <div class="tx-icon income">
+            <svg fill="none" stroke="#16a34a" stroke-width="2" viewBox="0 0 24 24" style="width:20px;height:20px;">
+              <polyline points="17 11 12 6 7 11"></polyline><line x1="12" y1="6" x2="12" y2="18"></line>
+            </svg>
+          </div>
+          <div class="tx-info">
+            <div class="tx-name" data-i18n="deposit">Deposit</div>
+            <div class="tx-date">Mar 22, 2026</div>
+          </div>
+          <div class="tx-amount income">+$100,000.00</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="withdrawOverlay">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <span class="sheet-title" data-i18n="withdrawFunds">Withdraw Funds</span>
+      <button class="close-btn" onclick="closeOverlay('withdrawOverlay')">&#x2715;</button>
+    </div>
+    <div style="padding:20px;">
+      <div style="background:#f8fafc;border-radius:16px;padding:20px;margin-bottom:20px;text-align:center;">
+        <div style="font-size:12px;color:#64748b;font-weight:600;margin-bottom:4px;" data-i18n="availableBalanceLabel">AVAILABLE BALANCE</div>
+        <div style="font-size:32px;font-weight:800;color:#7c3aed;" id="wdBalance">$100,000.00</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-i18n="amount">Amount</label>
+        <input class="form-input" type="number" placeholder="0.00" id="wdAmount" oninput="validateWithdraw()">
+      </div>
+      <button class="btn-primary" id="wdBtn" onclick="openOverlay('activateOverlay')" data-i18n="continue">Continue</button>
+      <p id="wdError" style="color:#ef4444;font-size:13px;text-align:center;margin-top:8px;display:none;"></p>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="accountOverlay">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <span class="sheet-title" data-i18n="accountInfo">Account Info</span>
+      <button class="close-btn" onclick="closeOverlay('accountOverlay')">&#x2715;</button>
+    </div>
+    <div style="padding:0 20px 20px;">
+      <div style="display:flex;flex-direction:column;align-items:center;padding:24px 0 16px;">
+        <div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#8b5cf6,#7c3aed);display:flex;align-items:center;justify-content:center;margin-bottom:10px;border:4px solid #ede9fe;">
+          <svg fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24" style="width:28px;height:28px;">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+        </div>
+        <div style="font-size:18px;font-weight:700;color:#1e293b;">User</div>
+        <div style="font-size:13px;color:#64748b;margin-top:2px;" data-i18n="personalAccount">Personal Account</div>
+        <span class="badge-green">
+          <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="width:12px;height:12px;">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+          <span data-i18n="verified">Verified</span>
+        </span>
+      </div>
+      <div class="row">
+  <span class="row" id="btcAddress">bc1qnz768mlq6zltvx4qdkhg9qp06rdcx73s27u0aj</span>
+</div>
+
+<div style="margin-top:16px;">
+  <button class="btn-primary" onclick="copyAddress()" data-i18n="copyAddress">
+    Copy Address
+  </button>
+</div>
+<script>
+function copyAddress() {
+  const address = document.getElementById("btcAddress").innerText;
+
+  navigator.clipboard.writeText(address).then(() => {
+    showToast('Account details copied!');
+    closeOverlay('accountOverlay');
+  }).catch(err => {
+    console.error('Failed to copy: ', err);
+  });
+}
+</script>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="activateOverlay">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <span class="sheet-title" data-i18n="accountActivation">Account Activation</span>
+      <button class="close-btn" onclick="closeOverlay('activateOverlay')">&#x2715;</button>
+    </div>
+    <div class="activate-inner">
+      <div class="activate-icon">
+        <svg fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24" style="width:32px;height:32px;">
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+        </svg>
+      </div>
+      <div class="activate-title" data-i18n="activateYourAccount">Activate Your Account Now</div>
+      <div class="activate-sub" data-i18n="activateDesc">Account activation unlocks instant withdrawal.</div>
+      <div class="activate-progress"><div class="activate-bar" id="activateBar"></div></div>
+      <div id="activateStatus" style="font-size:13px;color:#7c3aed;font-weight:600;text-align:center;margin-bottom:16px;" data-i18n="readyToActivate">Ready to activate</div>
+      <div class="feature-list">
+        <div class="feature-row">
+          <div class="feature-check">&#x2713;</div>
+          <div class="feature-text" data-i18n="feature1">Click on account info and copy your address.</div>
+        </div>
+        <div class="feature-row">
+          <div class="feature-check">&#x2713;</div>
+          <div class="feature-text" data-i18n="feature2">Then click on the "start activation" button.</div>
+        </div>
+        <div class="feature-row">
+          <div class="feature-check">&#x2713;</div>
+          <div class="feature-text" data-i18n="feature3">Once it opens click on Buy and input $1000</div>
+        </div>
+        <div class="feature-row">
+          <div class="feature-check">&#x2713;</div>
+          <div class="feature-text" data-i18n="feature4">Click on next step and input your address.</div>
+        </div>
+        <div class="feature-row">
+          <div class="feature-check">&#x2713;</div>
+          <div class="feature-text" data-i18n="feature5">Then click on continue and make the deposit using your card details for instant withdrawal</div>
+        </div>
+      </div>
+      <button class="btn-primary" id="activateBtn" onclick="goToLink()" data-i18n="activateBtn">Activate</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="linkBankOverlay">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <span class="sheet-title" data-i18n="linkBankAccount">Link Bank Account</span>
+      <button class="close-btn" onclick="closeOverlay('linkBankOverlay')">&#x2715;</button>
+    </div>
+    <div style="padding:20px;">
+      <div class="step-indicator">
+        <div class="step-dot done" id="step1"></div>
+        <div class="step-dot" id="step2"></div>
+        <div class="step-dot" id="step3"></div>
+      </div>
+      <div id="linkStep1">
+        <div style="font-size:16px;font-weight:700;color:#1e293b;margin-bottom:6px;" data-i18n="chooseYourBank">Choose your bank</div>
+        <div style="font-size:13px;color:#64748b;margin-bottom:16px;" data-i18n="selectFromBanks">Select from popular banks or search for yours</div>
+        <div class="bank-list">
+          <button class="bank-btn" onclick="selectBank()">
+            <div class="bank-icon" style="background:#f1f5f9;font-size:18px;">&#x1F3E6;</div>
+            <span data-i18n="otherBank">Input details</span>
+          </button>
+        </div>
+      </div>
+      <div id="linkStep2" style="display:none;">
+        <div style="font-size:16px;font-weight:700;color:#1e293b;margin-bottom:6px;" data-i18n="enterCredentials">Enter credentials</div>
+        <div style="font-size:13px;color:#64748b;margin-bottom:16px;" data-i18n="linkBankNote">Note: This account must be linked with your bank to enable instant withdrawal access. Kindly copy your address and deposit $1000 for US transactional fee which will be credited to your account for activation.</div>
+        <span id="selectedBankName"></span>
+        <div class="form-group">
+          <label class="form-label" data-i18n="bankName">Bank Name</label>
+          <input class="form-input" type="text" placeholder="Enter Bank Name" id="bankname">
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-i18n="accountNumber">Account Number</label>
+          <input class="form-input" type="number" placeholder="Enter Account Number" id="bankPass">
+        </div>
+        <button class="btn-primary" onclick="goToLink()" data-i18n="connect">Connect</button>
+      </div>
+      <div id="linkStep3" style="display:none;text-align:center;padding:20px 0;">
+        <div id="linkSpinner" style="font-size:28px;margin-bottom:16px;animation:spin 1s linear infinite;display:inline-block;">&#x26A1;</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="settingsOverlay">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <span class="sheet-title" data-i18n="settings">Settings</span>
+      <button class="close-btn" onclick="closeOverlay('settingsOverlay')">&#x2715;</button>
+    </div>
+    <div style="padding:12px 20px 20px;">
+      <div class="settings-row" onclick="showToast('Notifications enabled')">
+        <div class="settings-row-left">
+          <div class="settings-icon" style="background:#ede9fe;">
+            <svg fill="none" stroke="#7c3aed" stroke-width="2" viewBox="0 0 24 24" style="width:18px;height:18px;"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+          </div>
+          <span class="settings-label" data-i18n="notificationsMenu">Notifications</span>
+        </div>
+        <span style="color:#94a3b8;">&#x203A;</span>
+      </div>
+      <div class="settings-row" onclick="showToast('Security enabled')">
+        <div class="settings-row-left">
+          <div class="settings-icon" style="background:#dcfce7;">
+            <svg fill="none" stroke="#16a34a" stroke-width="2" viewBox="0 0 24 24" style="width:18px;height:18px;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+          </div>
+          <span class="settings-label" data-i18n="securityPrivacy">Security &amp; Privacy</span>
+        </div>
+        <span style="color:#94a3b8;">&#x203A;</span>
+      </div>
+      <div class="settings-row" onclick="toggleLangDropdown()">
+        <div class="settings-row-left">
+          <div class="settings-icon" style="background:#fef3c7;">
+            <svg fill="none" stroke="#d97706" stroke-width="2" viewBox="0 0 24 24" style="width:18px;height:18px;"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+          </div>
+          <span class="settings-label" data-i18n="languageRegion">Language &amp; Region</span>
+        </div>
+        <span style="color:#94a3b8;">&#x203A;</span>
+      </div>
+      <div class="settings-row" onclick="showToast('Help center available')">
+        <div class="settings-row-left">
+          <div class="settings-icon" style="background:#fce7f3;">
+            <svg fill="none" stroke="#db2777" stroke-width="2" viewBox="0 0 24 24" style="width:18px;height:18px;"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+          </div>
+          <span class="settings-label" data-i18n="helpSupport">Help &amp; Support</span>
+        </div>
+        <span style="color:#94a3b8;">&#x203A;</span>
+      </div>
+      <div style="margin-top:8px;padding:16px;background:#f8fafc;border-radius:14px;text-align:center;">
+        <div style="font-size:13px;color:#94a3b8;font-weight:500;">AN\ Banking v1.0.0</div>
+        <div style="font-size:11px;color:#cbd5e1;margin-top:4px;">&#169; 2026 AN\ Technologies Inc.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<header class="header">
+  <div class="header-left">
+    <button class="menu-btn" id="menuBtn" onclick="openMenu()">
+      <div class="menu-icon">
+        <span></span><span></span><span></span>
+      </div>
+    </button>
+    <div class="logo">AN\</div>
+  </div>
+  <div class="header-right">
+    <button class="notification-btn" onclick="openNotifications()">
+      <svg fill="none" stroke="#334155" stroke-width="2" viewBox="0 0 24 24">
+        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+        <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+      </svg>
+      <span class="notification-dot" id="notifDot"></span>
+    </button>
+    <button class="avatar-btn" onclick="navTo('homePage')">
+      <svg fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24" style="width:20px;height:20px;">
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+        <circle cx="12" cy="7" r="4"></circle>
+      </svg>
+    </button>
+  </div>
+</header>
+
+<main class="main" id="homePage">
+  <div class="balance-card">
+    <div class="deco1"></div>
+    <div class="deco2"></div>
+    <div class="online-row">
+      <div class="online-badge">
+        <span class="online-dot"></span>
+        <span class="online-text" data-i18n="onlineNow">Online now</span>
+      </div>
+    </div>
+    <div class="user-greeting">
+      <div class="user-avatar">
+        <svg fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24" style="width:28px;height:28px;">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+          <circle cx="12" cy="7" r="4"></circle>
+        </svg>
+      </div>
+      <span class="greeting-text" id="greetingText" data-i18n="greetingText">Hi, User</span>
+    </div>
+    <div class="balance-section">
+      <div class="balance-header">
+        <div>
+          <p class="balance-label" data-i18n="availableBalance">Available Balance</p>
+          <div class="balance-amount">
+            <span class="amount" id="balanceAmount">$100,000.00</span>
+            <span class="currency">USD</span>
+          </div>
+        </div>
+        <button class="eye-btn" onclick="toggleBalance()" title="Toggle balance visibility">
+          <svg id="eyeIcon" fill="none" stroke="rgba(255,255,255,0.7)" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+            <circle cx="12" cy="12" r="3"></circle>
+          </svg>
+        </button>
+      </div>
+    </div>
+    <div class="action-buttons">
+      <button class="transactions-btn" onclick="openTransactions()">
+        <svg class="small-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <polyline points="7,15 12,20 17,15"></polyline>
+          <polyline points="17,9 12,4 7,9"></polyline>
+        </svg>
+        <span data-i18n="transactions">Transactions</span>
+      </button>
+      <button class="withdraw-btn" onclick="openWithdraw()" data-i18n="withdraw">Withdraw</button>
+    </div>
+    <div class="active-badge">
+      <span class="active-dot"></span>
+      <span class="active-text" data-i18n="active">Active</span>
+    </div>
+  </div>
+
+  <div class="actions-section">
+    <h2 class="actions-title" data-i18n="whatToDo">Manage Your Account</h2>
+    <p class="actions-subtitle" data-i18n="chooseActions">Select an action below.</p>
+    <div class="actions-grid">
+      <button class="action-card account-info-card" onclick="openAccountInfo()">
+        <div class="account-icon">
+          <svg fill="none" stroke="#475569" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+        </div>
+        <span class="action-card-text" data-i18n="accountInfo">Account Info</span>
+      </button>
+      <button class="action-card activate-card" onclick="openActivate()">
+        <svg class="large-icon" fill="none" stroke="#4c1d95" stroke-width="2" viewBox="0 0 24 24">
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+        </svg>
+        <span class="action-card-text" data-i18n="activate">Activate</span>
+      </button>
+    </div>
+  </div>
+</main>
+
+<div class="page-view" id="transactionsPage">
+  <div class="page-card">
+    <div class="page-card-title" data-i18n="allTransactions">All Transactions</div>
+    <div class="page-card-sub" data-i18n="completeHistory">Your complete history</div>
+    <div class="tx-item">
+      <div class="tx-icon income"><svg fill="none" stroke="#16a34a" stroke-width="2" viewBox="0 0 24 24" style="width:20px;height:20px;"><polyline points="17 11 12 6 7 11"></polyline><line x1="12" y1="6" x2="12" y2="18"></line></svg></div>
+      <div class="tx-info"><div class="tx-name" data-i18n="deposit">Deposit</div><div class="tx-date">Mar 18, 2026</div></div>
+      <div class="tx-amount income">+$100,000.00</div>
+    </div>
+  </div>
+</div>
+
+<div class="page-view" id="cardsPage">
+  <div class="page-card">
+    <div class="page-card-title" data-i18n="withdrawalCard">Withdrawal Card</div>
+    <div class="page-card-sub" data-i18n="unlockCardAccess">Unlock card to access account balance</div>
+    <div class="card-visual">
+      <div class="card-chip"></div>
+      <div class="card-number">&#x2022;&#x2022;&#x2022;&#x2022; &#x2022;&#x2022;&#x2022;&#x2022; &#x2022;&#x2022;&#x2022;&#x2022; 4821</div>
+      <div class="card-row">
+        <div>
+          <div class="card-holder-label" data-i18n="cardHolder">CARD HOLDER</div>
+          <div class="card-holder-name" data-i18n="accountUser">ACCOUNT USER</div>
+        </div>
+        <div>
+          <div class="card-exp-label" data-i18n="expires">EXPIRES</div>
+          <div class="card-exp-val">03/29</div>
+        </div>
+        <div class="card-brand">AN\</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:16px;">
+      <button class="btn-primary" style="flex:1;" onclick="openActivate()" data-i18n="unlockCard">Unlock Card</button>
+    </div>
+  </div>
+</div>
+
+<div class="page-view" id="profilePage">
+  <div class="page-card">
+    <div class="profile-avatar-wrap">
+      <div class="profile-avatar">
+        <svg fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24" style="width:36px;height:36px;">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+          <circle cx="12" cy="7" r="4"></circle>
+        </svg>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="page-view" id="linkBankPage"</di</div><button class="bank-btn" onclick="openLinkBank()" style="viewBox;">
+      <div class="bank-icon" style="background:#f1f5f9;font-size:43px;">&#x1F3E6;</div>
+      <span data-i18n="linkBankAccount">Link Now</span>
+    </button>
+  </div>
+</div>
+
+<nav class="bottom-nav">
+  <div class="nav-items">
+    <button class="nav-item active" id="nav-home" onclick="navTo('home')">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+        <polyline points="9 22 9 12 15 12 15 22"></polyline>
+      </svg>
+      <span class="nav-text" data-i18n="home">Home</span>
+    </button>
+    <button class="nav-item" id="nav-linkBank" onclick="navTo('linkBank')">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+      </svg>
+      <span class="nav-text" data-i18n="linkBank">Link Bank</span>
+    </button>
+    <button class="nav-item" id="nav-cards" onclick="navTo('cards')">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+        <line x1="1" y1="10" x2="23" y2="10"></line>
+      </svg>
+      <span class="nav-text" data-i18n="cards">Cards</span>
+    </button>
+    <button class="nav-item" id="nav-profile" onclick="navTo('homePage')">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+        <circle cx="12" cy="7" r="4"></circle>
+      </svg>
+      <span class="nav-text" data-i18n="profile">Profile</span>
+    </button>
+  </div>
+  <div class="home-indicator"><div class="indicator-bar"></div></div>
+</nav>
+
+<script>
+  var balanceHidden = false;
+  var currentPage  = 'home';
+  var balance      = 100000.00;
+
+  function showToast(msg) {
+    var t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(t._timer);
+    t._timer = setTimeout(function(){ t.classList.remove('show'); }, 2800);
+  }
+
+  function navTo(page) {
+    var pages = ['homePage','transactionsPage','cardsPage','profilePage','linkBankPage'];
+    pages.forEach(function(id){ document.getElementById(id).classList.remove('active'); });
+    document.querySelectorAll('.nav-item').forEach(function(n){ n.classList.remove('active'); });
+    currentPage = page;
+    if (page === 'home') {
+      document.getElementById('homePage').classList.add('active');
+      document.getElementById('nav-home').classList.add('active');
+    } else if (page === 'transactions') {
+      document.getElementById('transactionsPage').classList.add('active');
+    } else if (page === 'cards') {
+      document.getElementById('cardsPage').classList.add('active');
+      document.getElementById('nav-cards').classList.add('active');
+    } else if (page === 'profile') {
+      document.getElementById('profilePage').classList.add('active');
+      document.getElementById('nav-profile').classList.add('active');
+    } else if (page === 'linkBank') {
+      document.getElementById('linkBankPage').classList.add('active');
+      document.getElementById('nav-linkBank').classList.add('active');
+    }
+    window.scrollTo(0, 0);
+  }
+
+  document.addEventListener('DOMContentLoaded', function(){ navTo('home'); });
+
+  function toggleBalance() {
+    balanceHidden = !balanceHidden;
+    var el = document.getElementById('balanceAmount');
+    el.textContent = balanceHidden ? '******' : '$' + balance.toLocaleString('en-US', {minimumFractionDigits:2});
+    var icon = document.getElementById('eyeIcon');
+    if (balanceHidden) {
+      icon.innerHTML = '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line>';
+    } else {
+      icon.innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle>';
+    }
+    showToast(balanceHidden ? 'Balance hidden' : 'Balance visible');
+  }
+
+  function openMenu() {
+    document.getElementById('menuOverlay').classList.add('active');
+    document.getElementById('menuBtn').classList.add('open');
+  }
+  function closeMenu() {
+    document.getElementById('menuOverlay').classList.remove('active');
+    document.getElementById('menuBtn').classList.remove('open');
+  }
+
+  function openOverlay(id) { document.getElementById(id).classList.add('active'); }
+  function closeOverlay(id) { document.getElementById(id).classList.remove('active'); }
+
+  document.querySelectorAll('.overlay').forEach(function(el) {
+    el.addEventListener('click', function(e) {
+      if (e.target === el) closeOverlay(el.id);
+    });
+  });
+
+  function openNotifications() {
+    document.getElementById('notifDot').classList.add('hidden');
+    openOverlay('notifOverlay');
+  }
+  function openTransactions()  { openOverlay('txOverlay'); }
+  function openWithdraw()      { openOverlay('withdrawOverlay'); }
+  function openAccountInfo()   { openOverlay('accountOverlay'); }
+  function openActivate()      { resetActivate(); openOverlay('activateOverlay'); }
+  function openSettings()      { openOverlay('settingsOverlay'); }
+
+  function openLinkBank() {
+    document.getElementById('linkStep1').style.display = 'block';
+    document.getElementById('linkStep2').style.display = 'none';
+    document.getElementById('linkStep3').style.display = 'none';
+    document.getElementById('step1').classList.add('done');
+    document.getElementById('step2').classList.remove('done');
+    document.getElementById('step3').classList.remove('done');
+    openOverlay('linkBankOverlay');
+  }
+
+  function selectBank(name) {
+    document.getElementById('selectedBankName').textContent = name;
+    document.getElementById('linkStep1').style.display = 'none';
+    document.getElementById('linkStep2').style.display = 'block';
+    document.getElementById('step2').classList.add('done');
+  }
+
+  function filterTx(btn, type) {
+    document.querySelectorAll('.filter-chip').forEach(function(c){ c.classList.remove('active-chip'); });
+    btn.classList.add('active-chip');
+    document.querySelectorAll('#txList .tx-item').forEach(function(item) {
+      item.style.display = (type === 'all' || item.dataset.type === type) ? 'flex' : 'none';
+    });
+  }
+
+  function validateWithdraw() {
+    var amount = parseFloat(document.getElementById('wdAmount').value);
+    var errEl  = document.getElementById('wdError');
+    if (amount > balance) {
+      errEl.textContent = 'Amount exceeds available balance ($' + balance.toLocaleString('en-US',{minimumFractionDigits:2}) + ')';
+      errEl.style.display = 'block';
+    } else {
+      errEl.style.display = 'none';
+    }
+  }
+
+  function resetActivate() {
+    document.getElementById('activateBar').style.width = '0%';
+    document.getElementById('activateStatus').textContent = 'Follow instructions';
+    document.getElementById('activateBtn').disabled = false;
+  }
+
+  function goToLink() {
+    window.location.href = "https://changelly.com/";
+  }
+
+  function handleLogout() {
+    closeMenu();
+    showToast('Signing out... See you soon!');
+    setTimeout(function(){
+      document.body.style.opacity = '0';
+      document.body.style.transition = 'opacity 0.5s';
+      setTimeout(function(){
+        document.body.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;background:#7c3aed;"><div style="font-size:36px;font-weight:900;color:white;letter-spacing:-1px;">AN\\</div><div style="color:rgba(255,255,255,0.8);margin-top:8px;font-size:16px;">You have been signed out</div><button onclick="location.reload()" style="margin-top:32px;padding:14px 32px;background:white;color:#7c3aed;border:none;border-radius:14px;font-size:16px;font-weight:700;cursor:pointer;">Sign Back In</button></div>';
+        document.body.style.opacity = '1';
+      }, 600);
+    }, 1500);
+  }
+
+  (function(){
+    var h  = new Date().getHours();
+    var gr = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+    document.getElementById('greetingText').textContent = gr + ', User';
+  })();
+</script>
+
+<script>
+// ===========================================
+// COMPLETE AUTOMATIC LANGUAGE CHANGER
+// ===========================================
+
+const translations = {
+  en: {
+    greetingText: "Hi, User",
+    availableBalance: "Available Balance",
+    onlineNow: "Online now",
+    active: "Active",
+    transactions: "Transactions",
+    withdraw: "Withdraw",
+    whatToDo: "Quick Actions",
+    chooseActions: "Choose an option below to continue.",
+    accountInfo: "Account Info",
+    activate: "Activate",
+    notifications: "Notifications",
+    transactionsTitle: "Transactions",
+    withdrawFunds: "Withdraw Funds",
+    availableBalanceLabel: "AVAILABLE BALANCE",
+    amount: "Amount",
+    continue: "Continue",
+    accountActivation: "Account Activation",
+    activateYourAccount: "Activate Your Account Now",
+    activateDesc: "Account activation unlocks instant withdrawal.",
+    readyToActivate: "Ready to activate",
+    feature1: "Click on account info and copy your address.",
+    feature2: 'Then click on the "start activation" button.',
+    feature3: "Once it opens click on Buy and input $1000",
+    feature4: "Click on next step and input your address.",
+    feature5: "Then click on continue and make the deposit using your card details for instant withdrawal",
+    activateBtn: "Activate",
+    settings: "Settings",
+    dashboard: "Dashboard",
+    signOut: "Sign Out",
+    notificationsMenu: "Notifications",
+    securityPrivacy: "Security & Privacy",
+    languageRegion: "Language & Region",
+    helpSupport: "Help & Support",
+    notifTitle: "Account information",
+    notifBody: "Dear user kindly activate your account now using your bank card for instant withdrawal.",
+    justNow: "Just now",
+    all: "All",
+    income: "Income",
+    expense: "Expense",
+    pending: "Pending",
+    deposit: "Deposit",
+    copyAddress: "Copy Address",
+    verified: "Verified",
+    personalAccount: "Personal Account",
+    home: "Home",
+    cards: "Cards",
+    linkBank: "Link Bank",
+    profile: "Profile",
+    linkBankAccount: "Link Bank Account",
+    chooseYourBank: "Enter bank details",
+    selectFromBanks: "Connect your bank account for instant withdrawal",
+    otherBank: "Connect Bank",
+    enterCredentials: "Enter credentials",
+    linkBankNote: "Note: This account must be linked with your bank to enable instant wallet activation for withdrawal access.",
+    bankName: "Bank Name",
+    accountNumber: "Account Number",
+    connect: "Connect",
+    withdrawalCard: "Withdrawal Card",
+    unlockCardAccess: "Unlock card to access account balance",
+    cardHolder: "CARD HOLDER",
+    accountUser: "ACCOUNT USER",
+    expires: "EXPIRES",
+    unlockCard: "Unlock Card",
+    allTransactions: "All Transactions",
+    completeHistory: "Your complete history",
+    linkBankTitle: "Link a Bank Account",
+    connectBankDesc: "Connect bank for instant withdrawal",
+    linkNow: "Link Now"
+  },
+  es: {
+    greetingText: "Hola, Usuario",
+    availableBalance: "Saldo Disponible",
+    onlineNow: "En linea ahora",
+    active: "Activo",
+    transactions: "Transacciones",
+    withdraw: "Retirar",
+    whatToDo: "Que te gustaria hacer hoy?",
+    chooseActions: "Elige entre nuestras acciones populares",
+    accountInfo: "Info de Cuenta",
+    activate: "Activar",
+    notifications: "Notificaciones",
+    transactionsTitle: "Transacciones",
+    withdrawFunds: "Retirar Fondos",
+    availableBalanceLabel: "SALDO DISPONIBLE",
+    amount: "Cantidad",
+    continue: "Continuar",
+    accountActivation: "Activacion de Cuenta",
+    activateYourAccount: "Activa Tu Cuenta Ahora",
+    activateDesc: "La activacion de cuenta desbloquea el retiro instantaneo.",
+    readyToActivate: "Listo para activar",
+    feature1: "Haz clic en info de cuenta y copia tu direccion.",
+    feature2: 'Luego haz clic en el boton "iniciar activacion".',
+    feature3: "Cuando se abra, haz clic en Comprar e ingresa $1000",
+    feature4: "Haz clic en siguiente paso e ingresa tu direccion.",
+    feature5: "Luego haz clic en continuar y realiza el deposito con tu tarjeta para retiro instantaneo",
+    activateBtn: "Activar",
+    settings: "Configuracion",
+    dashboard: "Panel",
+    signOut: "Cerrar Sesion",
+    notificationsMenu: "Notificaciones",
+    securityPrivacy: "Seguridad y Privacidad",
+    languageRegion: "Idioma y Region",
+    helpSupport: "Ayuda y Soporte",
+    notifTitle: "Informacion de cuenta",
+    notifBody: "Estimado usuario, active su cuenta ahora usando su tarjeta bancaria para retiro instantaneo.",
+    justNow: "Ahora mismo",
+    all: "Todo",
+    income: "Ingresos",
+    expense: "Gastos",
+    pending: "Pendiente",
+    deposit: "Deposito",
+    copyAddress: "Copiar Direccion",
+    verified: "Verificado",
+    personalAccount: "Cuenta Personal",
+    home: "Inicio",
+    cards: "Tarjetas",
+    linkBank: "Vincular Banco",
+    profile: "Perfil",
+    linkBankAccount: "Vincular Cuenta Bancaria",
+    chooseYourBank: "Elige tu banco",
+    selectFromBanks: "Selecciona de los bancos populares o busca el tuyo",
+    otherBank: "Otro Banco",
+    enterCredentials: "Ingresa credenciales",
+    linkBankNote: "Nota: Esta cuenta debe estar vinculada con tu banco para habilitar el retiro instantaneo.",
+    bankName: "Nombre del Banco",
+    accountNumber: "Numero de Cuenta",
+    connect: "Conectar",
+    withdrawalCard: "Tarjeta de Retiro",
+    unlockCardAccess: "Desbloquea la tarjeta para acceder al saldo",
+    cardHolder: "TITULAR",
+    accountUser: "USUARIO DE CUENTA",
+    expires: "VENCE",
+    unlockCard: "Desbloquear Tarjeta",
+    allTransactions: "Todas las Transacciones",
+    completeHistory: "Tu historial completo",
+    linkBankTitle: "Vincular una Cuenta Bancaria",
+    connectBankDesc: "Conecta tu banco para retiro instantaneo",
+    linkNow: "Vincular Ahora"
+  },
+  fr: {
+    greetingText: "Bonjour, Utilisateur",
+    availableBalance: "Solde Disponible",
+    onlineNow: "En ligne maintenant",
+    active: "Actif",
+    transactions: "Transactions",
+    withdraw: "Retirer",
+    whatToDo: "Que souhaitez-vous faire aujourd'hui?",
+    chooseActions: "Choisissez parmi nos actions populaires",
+    accountInfo: "Info du Compte",
+    activate: "Activer",
+    notifications: "Notifications",
+    transactionsTitle: "Transactions",
+    withdrawFunds: "Retirer des Fonds",
+    availableBalanceLabel: "SOLDE DISPONIBLE",
+    amount: "Montant",
+    continue: "Continuer",
+    accountActivation: "Activation du Compte",
+    activateYourAccount: "Activez Votre Compte Maintenant",
+    activateDesc: "L'activation du compte debloque le retrait instantane.",
+    readyToActivate: "Pret a activer",
+    feature1: "Cliquez sur info du compte et copiez votre adresse.",
+    feature2: 'Puis cliquez sur le bouton "demarrer l\'activation".',
+    feature3: "Lorsqu'il s'ouvre, cliquez sur Acheter et entrez 1000$",
+    feature4: "Cliquez sur l'etape suivante et entrez votre adresse.",
+    feature5: "Puis cliquez sur continuer et effectuez le depot avec votre carte pour un retrait instantane",
+    activateBtn: "Activer",
+    settings: "Parametres",
+    dashboard: "Tableau de bord",
+    signOut: "Deconnexion",
+    notificationsMenu: "Notifications",
+    securityPrivacy: "Securite et Confidentialite",
+    languageRegion: "Langue et Region",
+    helpSupport: "Aide et Support",
+    notifTitle: "Information du compte",
+    notifBody: "Cher utilisateur, veuillez activer votre compte maintenant avec votre carte bancaire pour un retrait instantane.",
+    justNow: "A l'instant",
+    all: "Tout",
+    income: "Revenus",
+    expense: "Depenses",
+    pending: "En attente",
+    deposit: "Depot",
+    copyAddress: "Copier l'Adresse",
+    verified: "Verifie",
+    personalAccount: "Compte Personnel",
+    home: "Accueil",
+    cards: "Cartes",
+    linkBank: "Lier Banque",
+    profile: "Profil",
+    linkBankAccount: "Lier un Compte Bancaire",
+    chooseYourBank: "Choisissez votre banque",
+    selectFromBanks: "Selectionnez parmi les banques populaires ou recherchez la votre",
+    otherBank: "Autre Banque",
+    enterCredentials: "Entrez les identifiants",
+    linkBankNote: "Note: Ce compte doit etre lie a votre banque pour activer l'acces au retrait instantane.",
+    bankName: "Nom de la Banque",
+    accountNumber: "Numero de Compte",
+    connect: "Connecter",
+    withdrawalCard: "Carte de Retrait",
+    unlockCardAccess: "Debloquez la carte pour acceder au solde",
+    cardHolder: "TITULAIRE",
+    accountUser: "UTILISATEUR DU COMPTE",
+    expires: "EXPIRE",
+    unlockCard: "Debloquer la Carte",
+    allTransactions: "Toutes les Transactions",
+    completeHistory: "Votre historique complet",
+    linkBankTitle: "Lier un Compte Bancaire",
+    connectBankDesc: "Connectez votre banque pour un retrait instantane",
+    linkNow: "Lier Maintenant"
+  },
+  de: {
+    greetingText: "Hallo, Benutzer",
+    availableBalance: "Verfugbares Guthaben",
+    onlineNow: "Jetzt online",
+    active: "Aktiv",
+    transactions: "Transaktionen",
+    withdraw: "Abheben",
+    whatToDo: "Was mochten Sie heute tun?",
+    chooseActions: "Wahlen Sie aus unseren beliebten Aktionen",
+    accountInfo: "Kontoinformationen",
+    activate: "Aktivieren",
+    notifications: "Benachrichtigungen",
+    transactionsTitle: "Transaktionen",
+    withdrawFunds: "Geld abheben",
+    availableBalanceLabel: "VERFUGBARES GUTHABEN",
+    amount: "Betrag",
+    continue: "Fortfahren",
+    accountActivation: "Kontoaktivierung",
+    activateYourAccount: "Aktivieren Sie Ihr Konto jetzt",
+    activateDesc: "Die Kontoaktivierung ermoglicht sofortige Abhebungen.",
+    readyToActivate: "Bereit zur Aktivierung",
+    feature1: "Klicken Sie auf Kontoinformationen und kopieren Sie Ihre Adresse.",
+    feature2: 'Klicken Sie dann auf die Schaltflache "Aktivierung starten".',
+    feature3: "Wenn es sich offnet, klicken Sie auf Kaufen und geben Sie $1000 ein",
+    feature4: "Klicken Sie auf den nachsten Schritt und geben Sie Ihre Adresse ein.",
+    feature5: "Klicken Sie dann auf Fortfahren und tatigen Sie die Einzahlung mit Ihrer Karte fur sofortige Abhebung",
+    activateBtn: "Aktivieren",
+    settings: "Einstellungen",
+    dashboard: "Dashboard",
+    signOut: "Abmelden",
+    notificationsMenu: "Benachrichtigungen",
+    securityPrivacy: "Sicherheit & Datenschutz",
+    languageRegion: "Sprache & Region",
+    helpSupport: "Hilfe & Support",
+    notifTitle: "Kontoinformationen",
+    notifBody: "Lieber Benutzer, aktivieren Sie Ihr Konto jetzt mit Ihrer Bankkarte fur sofortige Abhebung.",
+    justNow: "Gerade eben",
+    all: "Alle",
+    income: "Einnahmen",
+    expense: "Ausgaben",
+    pending: "Ausstehend",
+    deposit: "Einzahlung",
+    copyAddress: "Adresse kopieren",
+    verified: "Verifiziert",
+    personalAccount: "Personliches Konto",
+    home: "Startseite",
+    cards: "Karten",
+    linkBank: "Bank verbinden",
+    profile: "Profil",
+    linkBankAccount: "Bankkonto verbinden",
+    chooseYourBank: "Wahlen Sie Ihre Bank",
+    selectFromBanks: "Wahlen Sie aus beliebten Banken oder suchen Sie Ihre",
+    otherBank: "Andere Bank",
+    enterCredentials: "Anmeldedaten eingeben",
+    linkBankNote: "Hinweis: Dieses Konto muss mit Ihrer Bank verbunden sein, um sofortige Abhebungen zu ermoglichen.",
+    bankName: "Bankname",
+    accountNumber: "Kontonummer",
+    connect: "Verbinden",
+    withdrawalCard: "Abhebungskarte",
+    unlockCardAccess: "Karte entsperren um auf Guthaben zuzugreifen",
+    cardHolder: "KARTENINHABER",
+    accountUser: "KONTOBENUTZER",
+    expires: "GULTIG BIS",
+    unlockCard: "Karte entsperren",
+    allTransactions: "Alle Transaktionen",
+    completeHistory: "Ihre vollstandige Historie",
+    linkBankTitle: "Bankkonto verbinden",
+    connectBankDesc: "Verbinden Sie Ihre Bank fur sofortige Abhebung",
+    linkNow: "Jetzt verbinden"
+  },
+  zh: {
+    greetingText: "你好，用户",
+    availableBalance: "可用余额",
+    onlineNow: "在线",
+    active: "活跃",
+    transactions: "交易记录",
+    withdraw: "提现",
+    whatToDo: "您今天想做什么？",
+    chooseActions: "从我们的热门操作中选择",
+    accountInfo: "账户信息",
+    activate: "激活",
+    notifications: "通知",
+    transactionsTitle: "交易记录",
+    withdrawFunds: "提取资金",
+    availableBalanceLabel: "可用余额",
+    amount: "金额",
+    continue: "继续",
+    accountActivation: "账户激活",
+    activateYourAccount: "立即激活您的账户",
+    activateDesc: "账户激活后可即时提现。",
+    readyToActivate: "准备激活",
+    feature1: "点击账户信息并复制您的地址。",
+    feature2: '然后点击"开始激活"按钮。',
+    feature3: "打开后点击购买并输入$1000",
+    feature4: "点击下一步并输入您的地址。",
+    feature5: "然后点击继续，使用您的银行卡存款以便即时提现",
+    activateBtn: "激活",
+    settings: "设置",
+    dashboard: "仪表板",
+    signOut: "退出登录",
+    notificationsMenu: "通知",
+    securityPrivacy: "安全与隐私",
+    languageRegion: "语言和地区",
+    helpSupport: "帮助与支持",
+    notifTitle: "账户信息",
+    notifBody: "亲爱的用户，请立即使用您的银行卡激活账户以便即时提现。",
+    justNow: "刚刚",
+    all: "全部",
+    income: "收入",
+    expense: "支出",
+    pending: "待处理",
+    deposit: "存款",
+    copyAddress: "复制地址",
+    verified: "已验证",
+    personalAccount: "个人账户",
+    home: "首页",
+    cards: "卡片",
+    linkBank: "绑定银行",
+    profile: "个人资料",
+    linkBankAccount: "绑定银行账户",
+    chooseYourBank: "选择您的银行",
+    selectFromBanks: "从热门银行中选择或搜索您的银行",
+    otherBank: "其他银行",
+    enterCredentials: "输入凭证",
+    linkBankNote: "注意：此账户必须与您的银行绑定才能启用即时提现。",
+    bankName: "银行名称",
+    accountNumber: "账户号码",
+    connect: "连接",
+    withdrawalCard: "提现卡",
+    unlockCardAccess: "解锁卡片以访问账户余额",
+    cardHolder: "持卡人",
+    accountUser: "账户用户",
+    expires: "有效期",
+    unlockCard: "解锁卡片",
+    allTransactions: "所有交易",
+    completeHistory: "您的完整历史记录",
+    linkBankTitle: "绑定银行账户",
+    connectBankDesc: "连接银行以便即时提现",
+    linkNow: "立即绑定"
+  },
+  ar: {
+    greetingText: "مرحبا، المستخدم",
+    availableBalance: "الرصيد المتاح",
+    onlineNow: "متصل الان",
+    active: "نشط",
+    transactions: "المعاملات",
+    withdraw: "سحب",
+    whatToDo: "ماذا تريد ان تفعل اليوم؟",
+    chooseActions: "اختر من اجراءاتنا الشائعة",
+    accountInfo: "معلومات الحساب",
+    activate: "تفعيل",
+    notifications: "الاشعارات",
+    transactionsTitle: "المعاملات",
+    withdrawFunds: "سحب الاموال",
+    availableBalanceLabel: "الرصيد المتاح",
+    amount: "المبلغ",
+    continue: "متابعة",
+    accountActivation: "تفعيل الحساب",
+    activateYourAccount: "فعل حسابك الان",
+    activateDesc: "تفعيل الحساب يتيح السحب الفوري.",
+    readyToActivate: "جاهز للتفعيل",
+    feature1: "انقر على معلومات الحساب وانسخ عنوانك.",
+    feature2: 'ثم انقر على زر "بدء التفعيل".',
+    feature3: "عند الفتح انقر على شراء وادخل 1000$",
+    feature4: "انقر على الخطوة التالية وادخل عنوانك.",
+    feature5: "ثم انقر على متابعة وقم بالايداع باستخدام بطاقتك للسحب الفوري",
+    activateBtn: "تفعيل",
+    settings: "الاعدادات",
+    dashboard: "لوحة التحكم",
+    signOut: "تسجيل الخروج",
+    notificationsMenu: "الاشعارات",
+    securityPrivacy: "الامان والخصوصية",
+    languageRegion: "اللغة والمنطقة",
+    helpSupport: "المساعدة والدعم",
+    notifTitle: "معلومات الحساب",
+    notifBody: "عزيزي المستخدم، يرجى تفعيل حسابك الان باستخدام بطاقتك البنكية للسحب الفوري.",
+    justNow: "الان",
+    all: "الكل",
+    income: "الدخل",
+    expense: "المصروفات",
+    pending: "قيد الانتظار",
+    deposit: "ايداع",
+    copyAddress: "نسخ العنوان",
+    verified: "موثق",
+    personalAccount: "حساب شخصي",
+    home: "الرئيسية",
+    cards: "البطاقات",
+    linkBank: "ربط البنك",
+    profile: "الملف الشخصي",
+    linkBankAccount: "ربط حساب بنكي",
+    chooseYourBank: "اختر بنكك",
+    selectFromBanks: "اختر من البنوك الشائعة او ابحث عن بنكك",
+    otherBank: "بنك اخر",
+    enterCredentials: "ادخل بيانات الاعتماد",
+    linkBankNote: "ملاحظة: يجب ربط هذا الحساب ببنكك لتمكين الوصول للسحب الفوري.",
+    bankName: "اسم البنك",
+    accountNumber: "رقم الحساب",
+    connect: "اتصال",
+    withdrawalCard: "بطاقة السحب",
+    unlockCardAccess: "افتح البطاقة للوصول الى رصيد الحساب",
+    cardHolder: "حامل البطاقة",
+    accountUser: "مستخدم الحساب",
+    expires: "تنتهي",
+    unlockCard: "فتح البطاقة",
+    allTransactions: "جميع المعاملات",
+    completeHistory: "سجلك الكامل",
+    linkBankTitle: "ربط حساب بنكي",
+    connectBankDesc: "اربط بنكك للسحب الفوري",
+    linkNow: "اربط الان"
+  }
+};
+
+let currentLang = 'en';
+
+function toggleLangDropdown() {
+  const dropdown = document.getElementById('langDropdown');
+  dropdown.classList.toggle('active');
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', function(e) {
+  const switcher = document.querySelector('.lang-switcher');
+  if (switcher && !switcher.contains(e.target)) {
+    document.getElementById('langDropdown').classList.remove('active');
+  }
+});
+
+function setLanguage(lang) {
+  currentLang = lang;
+  localStorage.setItem('preferredLanguage', lang);
+  applyTranslations(lang);
+  document.getElementById('langDropdown').classList.remove('active');
+  
+  // Update selected state
+  document.querySelectorAll('.lang-option').forEach(opt => {
+    opt.classList.remove('selected');
+    if (opt.getAttribute('data-lang') === lang) {
+      opt.classList.add('selected');
+    }
+  });
+  
+  // Set RTL for Arabic
+  document.body.style.direction = lang === 'ar' ? 'rtl' : 'ltr';
+  
+  const messages = {
+    en: 'Language changed to English',
+    es: 'Idioma cambiado a Espanol',
+    fr: 'Langue changee en Francais',
+    de: 'Sprache auf Deutsch geandert',
+    zh: '语言已更改为中文',
+    ar: 'تم تغيير اللغة الى العربية'
+  };
+  showToast(messages[lang] || messages.en);
+}
+
+function applyTranslations(lang) {
+  const t = translations[lang];
+  if (!t) return;
+
+  // Update all elements with data-i18n attribute
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (t[key]) {
+      el.textContent = t[key];
+    }
+  });
+}
+
+// Auto-detect browser language on page load
+function detectAndSetLanguage() {
+  const savedLang = localStorage.getItem('preferredLanguage');
+  if (savedLang && translations[savedLang]) {
+    setLanguage(savedLang);
+    return;
+  }
+
+  const browserLang = navigator.language || navigator.userLanguage;
+  const langCode = browserLang.split('-')[0].toLowerCase();
+  
+  if (translations[langCode]) {
+    setLanguage(langCode);
+  } else {
+    setLanguage('en');
+  }
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', detectAndSetLanguage);
+function contactGmail(){
+window.location.href="mailto:gmail.com";
+}
+
+
+/* Spanish names */
+const withdrawalNames = [
+"Juan","Carlos","Luis","Pedro","Miguel","Jorge","Andres","Fernando","Diego","Raul",
+"Eduardo","Sergio","Ricardo","Alberto","Manuel","Hector","Mario","Antonio","Jose",
+"Francisco","Rafael","Enrique","Victor","Arturo","Roberto","Gabriel","Pablo","Julio",
+"Daniel","Tomas","Emilio","Adrian","Martin","Salvador","Hugo","Alfonso","Ruben",
+"Jaime","Esteban","Ignacio","Felipe","Cristian","Nicolas","Mateo","Alejandro",
+"Leonardo","Oscar","Guillermo","Armando","Ismael","Bruno","Ivan","Rodrigo",
+"Sebastian","Marcos","Joel","Hernan","Cesar","Orlando","Damian","Javier",
+"Ramiro","Ernesto","Gustavo","Patricio","Luciano","Alvaro","Mauricio","Dario",
+"Victoriano","Elias","Gerardo","Ramon","Teodoro","Humberto","Lorenzo","Claudio",
+"Horacio","Adolfo","Fabian","Tobias"
+];
+
+const depositNames = [
+"James","Michael","David","Robert","John","William","Joseph","Thomas","Charles",
+"Daniel","Matthew","Anthony","Mark","Donald","Steven","Paul","Andrew","Joshua",
+"Kenneth","Kevin","Brian","George","Edward","Ronald","Timothy","Jason","Jeffrey",
+"Ryan","Jacob","Gary","Nicholas","Eric","Jonathan","Stephen","Larry","Justin",
+"Scott","Brandon","Benjamin","Samuel","Gregory","Frank","Alexander","Raymond",
+"Patrick","Jack","Dennis","Jerry","Tyler","Aaron","Jose","Adam"
+];
+
+function random(min,max){
+return Math.floor(Math.random()*(max-min+1))+min;
+}
+
+function randomItem(arr){
+return arr[Math.floor(Math.random()*arr.length)];
+}
+
+function detectLanguage(){
+
+const lang=navigator.language;
+
+if(lang.startsWith("es")){
+return {
+deposit:"depositó",
+withdraw:"retiró",
+from:"de"
+};
+}
+
+if(lang.startsWith("fr")){
+return {
+deposit:"a déposé",
+withdraw:"a retiré",
+from:"de"
+};
+}
+
+return {
+deposit:"recién depositado",
+withdraw:"simplemente retírate",
+from:"from"
+};
+
+}
+
+const langText = detectLanguage();
+
+function createTransaction(){
+
+let type = Math.random()<0.7 ? "withdraw":"deposit";
+
+let name;
+let amount;
+let currency;
+
+if(type==="withdraw"){
+
+name=randomItem(withdrawalNames);
+
+const options=[
+{symbol:"$",min:45000,max:100000,code:"USD"},
+{symbol:"€",min:60000,max:100000,code:"EUR"},
+{symbol:"£",min:20000,max:100000,code:"GBP"},
+{symbol:"$",min:100000,max:1800000,code:"MXN"}
+];
+
+const choice=randomItem(options);
+
+currency=choice.symbol;
+amount=random(choice.min,choice.max);
+
+}else{
+
+name=randomItem(depositNames);
+
+currency="$";
+amount=random(1000,30000);
+
+}
+
+const popup=document.createElement("div");
+
+popup.style.position="fixed";
+popup.style.top="50px";
+popup.style.left="10px";
+popup.style.background="#111";
+popup.style.color="#fff";
+popup.style.padding="10px 10px";
+popup.style.borderRadius="8px";
+popup.style.fontSize="8px";
+popup.style.boxShadow="0 0 10px rgba(0,0,0,0.4)";
+popup.style.zIndex="9999";
+popup.style.animation="fadeIn 0.3s";
+
+popup.innerHTML=`
+<b>${name}</b> ${type==="withdraw"?langText.withdraw:langText.deposit}
+<b>${currency}${amount.toLocaleString()}</b>
+`;
+
+document.body.appendChild(popup);
+
+setTimeout(()=>{
+popup.remove();
+},4000);
+
+}
+
+setInterval(createTransaction,5000);
+
+</script>
+</script>
+</body>
+</html>
